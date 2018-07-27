@@ -36,6 +36,7 @@ public class Constants {
   public static final String MOD_TYPE_DEAD_AIM = "DeadAim";
   public static final String MOD_TYPE_FLAT_STATUS = "FlatStatusBonus";
   public static final String MOD_TYPE_FLAT_MAG = "FlatMagBonus";
+  public static final String MOD_TYPE_MUNITIONS = "Munitions";
   
   /** Damage Types **/
   public static final String PHYSICAL_WEAPON_DAMAGE = "Physical";
@@ -66,7 +67,7 @@ public class Constants {
   
   /** Frame Title **/
   public static final String APP_TITLE = "Warframe Weapon DPS Calculator";
-  public static final String APP_VERSION = "v0.8.2";
+  public static final String APP_VERSION = "v0.8.3 Beta";
   
   /** ToolTips **/
   public static final String NAME_TOOL_TIP = "The weapon's name.";
@@ -98,6 +99,8 @@ public class Constants {
   /** Mod Effect Count **/
   public static final String SINGLE = "Single";
   public static final String DOUBLE = "Double";
+  public static final String TRIPLE = "Triple";
+  public static final String QUAD = "Quad";
   
   /** Mod Polarities **/
   public static final String NONE = "None";
@@ -267,6 +270,7 @@ public class Constants {
                                             "High Voltage,Rifle,3,2,LightningDamage,StatusChance,0.15,0.15,V,4",
                                             "Hollow Point,Pistol,5,2,CritMultiplier,DamageBonus,0.1,-0.025,~,4",
                                             "Hornet Strike,Pistol,10,1,DamageBonus,0.2,V,4",
+                                            "Hunter Munitions,Rifle,0,1,Munitions,1,V,9",
                                             "Hush,Rifle,3,1,Silence,0.25,~,2",
                                             "Ice Storm,Pistol,3,2,MagCap,IceDamage,0.1,0.1,V,6",
                                             "Incendiary Coat,Shotgun,5,1,FireDamage,0.15,~,6",

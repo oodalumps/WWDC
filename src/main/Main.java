@@ -222,6 +222,9 @@ public class Main {
   public static SurfaceDamage fossilized = new SurfaceDamage();
   public static SurfaceDamage sinew = new SurfaceDamage();
 
+  public static double globalToxin; //Added this to calculate gas proc damage -o
+  public static int hunterMunitions; //Big league TTK time
+  
   /**
    * ____________________________________________________________
    * METHODS
@@ -668,6 +671,23 @@ public class Main {
     Mod primeMod = null;
     double primeModRanks = 0;
     String primeModType = "";
+   
+    globalToxin = 0;
+    hunterMunitions = 0;
+    
+    for(int i = 0; i < activeMods.size(); i++){ //Calculating total toxin mod power for gas procs -o
+        Mod tempMod = activeMods.get(i);
+        if(tempMod.effectTypes.contains(Constants.MOD_TYPE_TOXIN_DAMAGE)) {
+        double modPower = tempMod.effectStrengths.get(tempMod.effectTypes.indexOf(Constants.MOD_TYPE_TOXIN_DAMAGE))*(1.0+modRanks.get(i));	
+        globalToxin += modPower;
+    }}
+    
+    for(int i = 0; i < activeMods.size(); i++){ //Finding Hunter Munitions and setting the global variable
+        Mod tempMod = activeMods.get(i);
+        if(tempMod.effectTypes.contains(Constants.MOD_TYPE_MUNITIONS)) {
+        hunterMunitions = 1;
+    }}
+    
     for(int i = 0; i < activeMods.size(); i++){
       Mod tempMod = activeMods.get(i);
       if(primeMod == null){
@@ -1394,23 +1414,23 @@ public class Main {
       finalStatusDuration += statusDuration * statusDurationMods.get(i);
     }
     
-    if(damageType.equals(Constants.PHYSICAL_WEAPON_DAMAGE)){
+    if(damageType.equals(Constants.PHYSICAL_WEAPON_DAMAGE)){ //For some reason, gott multiplied IPS by the # of mods, rather than their strength. Fixed -o
       
       impact.finalBase = impact.base;
       for(int i = 0; i < impactDamageMods.size(); i++){
-        impact.finalBase += impact.base*impactDamageMods.size();
+        impact.finalBase += impact.base*impactDamageMods.get(i);
       }
       impact.finalBase *= finalDamageMult;
       
       puncture.finalBase = puncture.base;
       for(int i = 0; i < punctureDamageMods.size(); i++){
-        puncture.finalBase += puncture.base*punctureDamageMods.size();
+        puncture.finalBase += puncture.base*punctureDamageMods.get(i);
       }
       puncture.finalBase *= finalDamageMult;
       
       slash.finalBase = slash.base;
       for(int i = 0; i < slashDamageMods.size(); i++){
-        slash.finalBase += slash.base*slashDamageMods.size();
+        slash.finalBase += slash.base*slashDamageMods.get(i);
       }
       slash.finalBase *= finalDamageMult;
     }
