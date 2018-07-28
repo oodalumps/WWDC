@@ -137,9 +137,7 @@ public class Main {
   public static int complexTTKIterations = 10000;
   public static int complexTTKCompletions = 0;
   public static String longestTTKName = "";
-  protected static int maxTTKTime = 300000;
-  
-  protected static double CONTINUOUS_MULT = 4.0;
+  protected static int maxTTKTime = 300000; 
   
   protected static String weaponName = "";
   public static String weaponMode = "";
@@ -182,7 +180,6 @@ public class Main {
   public static double finalCorpusMult = 1.0;
   public static double finalGrineerMult = 1.0;
   public static double finalInfestedMult = 1.0;
-  protected static double continuousDrainRate = 0.0;
   
   /** Damage/DPS Values **/
   //Misc Values
@@ -528,7 +525,6 @@ public class Main {
     fireStacks = 0;
     toxinStacks = 0;
     gasStacks = 0;
-    continuousDrainRate = 0.0;
     complexTTKCompletions = 0;
   }
   
@@ -595,7 +591,7 @@ public class Main {
     //Factor for multiple projectiles per shot
     if(projectileCount > 1.0){
       raw.base /= projectileCount;
-      statusChance /= projectileCount;
+      //statusChance /= projectileCount;         This is super wrong -o
       impact.base /= projectileCount;
       puncture.base /= projectileCount;
       slash.base /= projectileCount;
@@ -611,13 +607,8 @@ public class Main {
       viral.base /= projectileCount;
     }
     
-    //Calculations based on weapon type
-    if(weaponMode.equals(Constants.CONTINUOUS)){
-      continuousDrainRate = fireRate;
-      fireRate = CONTINUOUS_MULT;
-      damageMult *= continuousDrainRate;
-      statusChance /= CONTINUOUS_MULT;
-    }else if(weaponMode.equals(Constants.CHARGE)){
+    //Calculations based on weapon type    ---Removed stuff for beams because it was outdated
+    if(weaponMode.equals(Constants.CHARGE)){
       double fireRateAddition = 60.0 / chargeTime / 60.0;
       fireRate += fireRateAddition;
     }else if(weaponMode.equals(Constants.BURST)){
@@ -1356,20 +1347,10 @@ public class Main {
     finalDamageMult = damageMult;
     for(int i = 0; i < damageMultMods.size(); i++){
       finalDamageMult += damageMult*damageMultMods.get(i);
-    }
-    
-    if(weaponMode.equals(Constants.CONTINUOUS)){
-      finalFireRate = fireRate;
-      double localContinuousDrainRate = continuousDrainRate;
-      for(int i = 0; i < fireRateMods.size(); i++){
-        finalDamageMult += damageMult*fireRateMods.get(i);
-        continuousDrainRate += localContinuousDrainRate*fireRateMods.get(i);
-      }
-    }else{
-      finalFireRate = fireRate;
-      for(int i = 0; i < fireRateMods.size(); i++){
-        finalFireRate += fireRate*fireRateMods.get(i);
-      }
+    }    
+    finalFireRate = fireRate;
+    for(int i = 0; i < fireRateMods.size(); i++){
+      finalFireRate += fireRate*fireRateMods.get(i);
     }
     
     //This is completely retarded, but also the current case
@@ -1388,8 +1369,15 @@ public class Main {
     finalReloadTime /= reloadSpeedMult;
     
     finalProjectileCount = projectileCount;
+    double multishot = 1;
     for(int i = 0; i < projectileCountMods.size(); i++){
+      multishot += projectileCount*projectileCountMods.get(i);
       finalProjectileCount += projectileCount*projectileCountMods.get(i);
+      
+      if(weaponMode.equals(Constants.CONTINUOUS)) {
+    	finalProjectileCount = projectileCount;
+    	finalDamageMult *= multishot; //Beams don't get more projectiles, so I turned multishot into damage -o
+      }
     }
     
     finalFirstShotDamageMult = firstShotDamageMult;
@@ -1408,6 +1396,11 @@ public class Main {
       }
       finalStatusChance += localStatus;
     }
+    
+    if(finalStatusChance > 1) {
+    	finalStatusChance = 1;     //This happens too often to let it slide -o
+    }    
+    finalStatusChance = (1 - Math.pow((1-(finalStatusChance)),(1/projectileCount))); //Correctly handling multi-projectile status -o
     
     finalStatusDuration = statusDuration;
     for(int i = 0; i < statusDurationMods.size(); i++){
@@ -1542,12 +1535,7 @@ public class Main {
       }
     }
     
-    if(weaponMode.equals(Constants.CONTINUOUS)){
-      //finalStatusChance = (finalStatusChance * continuousDrainRate) / CONTINUOUS_MULT;
-      finalNormalShots = (finalNormalShots / continuousDrainRate) * CONTINUOUS_MULT;
-      finalCritShots = (finalCritShots / continuousDrainRate) * CONTINUOUS_MULT;
-      finalIterationTime = (finalMag / continuousDrainRate) + finalReloadTime;
-    }else if(weaponMode.equals(Constants.BURST)){
+    if(weaponMode.equals(Constants.BURST)){
       if(selectedWeapon.isRefireCanceled()){
         finalFireRate += fireRate;
       }
@@ -1579,13 +1567,10 @@ public class Main {
    * Calculates miscellaneous values 
    */
   protected static void calculateMiscValues(){
-    if(weaponMode.equals(Constants.CONTINUOUS)){
-      procsPerSecond = ((CONTINUOUS_MULT * ((finalProjectileCount * finalMag) / continuousDrainRate)) * finalStatusChance) * (60 / finalIterationTime / 60);
-      burstProcsPerSecond = (CONTINUOUS_MULT * (finalProjectileCount * finalStatusChance));
-    }else{
-      procsPerSecond = ((finalProjectileCount * finalMag) * finalStatusChance) * (60 / finalIterationTime / 60);
-      burstProcsPerSecond = ((finalProjectileCount * finalMag) * finalStatusChance) * (60 / (finalMag / finalFireRate) / 60);
-    }
+
+    procsPerSecond = ((finalProjectileCount * finalMag) * finalStatusChance) * (60 / finalIterationTime / 60);
+    burstProcsPerSecond = ((finalProjectileCount * finalMag) * finalStatusChance) * (60 / (finalMag / finalFireRate) / 60);
+      
     if(slash.finalBase > 0.0){
       slashStacks = calculateAverageStacks(finalStatusChance, 6.0);
     }

@@ -270,7 +270,6 @@ public class Constants {
                                             "High Voltage,Rifle,3,2,LightningDamage,StatusChance,0.15,0.15,V,4",
                                             "Hollow Point,Pistol,5,2,CritMultiplier,DamageBonus,0.1,-0.025,~,4",
                                             "Hornet Strike,Pistol,10,1,DamageBonus,0.2,V,4",
-                                            "Hunter Munitions,Rifle,0,1,Munitions,1,V,9",
                                             "Hush,Rifle,3,1,Silence,0.25,~,2",
                                             "Ice Storm,Pistol,3,2,MagCap,IceDamage,0.1,0.1,V,6",
                                             "Incendiary Coat,Shotgun,5,1,FireDamage,0.15,~,6",
@@ -362,7 +361,24 @@ public class Constants {
                                             "Polar Magazine,ArcGun,5,1,IceDamage,0.2,D,4",
                                             "Rubedo-Lined Barrel,ArcGun,5,1,DamageBonus,0.1,V,6",
                                             "Venomous Clip,ArcGun,5,1,ToxinDamage,0.2,D,6",
-                                            "Depleted Reload,Rifle,5,2,MagCap,ReladSpeed,-0.1,0.08,~,2"};
+                                            "Depleted Reload,Rifle,5,2,MagCap,ReladSpeed,-0.1,0.08,~,2",
+  											"Primed Target Cracker,Pistol,10,1,CritMultiplier,0.1,V,4",
+  											"Vigilante Armaments,Rifle,5,1,Multishot,0.1,~,4",
+  											"Vigilante Armaments,Shotgun,5,1,Multishot,0.1,~,4",
+  											"Primed Quickdraw,Pistol,10,1,ReladSpeed,0.08,~,2",
+  											"Primed Slip Magazine,Pistol,10,1,MagCap,0.05,~,4",
+  											"Auger Pact,Pistol,5,1,DamageBonus,0.15,V,2",
+  											"Hydraulic Crosshairs,Pistol,5,1,CritChance,0.225,V,2",
+  											"Argon Scope,Rifle,5,1,CritChance,0.225,V,2",
+  											"Laser Sight,Shotgun,5,1,CritChance,0.2,V,4",
+  											"Bladed Rounds,Rifle,5,1,CritMultiplier,0.2,V,4",
+  											"Shrapnel Shot,Shotgun,5,1,CritMultiplier,0.165,V,4",
+  											"Sharpened Bullets,Pistol,5,1,CritMultiplier,0.125,V,2",
+  											"Hunter Munitions,Rifle,0,1,Munitions,1,V,9",
+  											"Hunter Munitions,Shotgun,0,1,Munitions,1,V,9",
+  											"Primed Shred,Rifle,10,2,FireRate,ObjectPierce,0.05,0.0,V,6",
+  											"Primed Cryo Rounds,Rifle,10,1,IceDamage,0.15,D,6",
+  											"Chilling Reload,Shotgun,3,2,IceDamage,ReladSpeed,0.15,0.1,V,2"};
   
   /** Default Weapons for use if the file is missing **/
   public static final String[] baseWeapons = {"Pistol,Semi-Auto,Toxin,Acrid,,,,35,,,,6.7,15,210,1.2,5,2,10,1",

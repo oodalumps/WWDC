@@ -86,6 +86,7 @@ public class TTKTarget implements Comparable{
   public double localProjectileCount = 1.0;
   public double millisceondsPerShot = 0.0;
   public double millisecondMult = 1.0;
+  public double rampMult = 0;
   public double reloadTimeMilliseconds = 0.0;
   public double baseImpactDamage = 0.0;
   public double basePunctureDamage = 0.0;
@@ -653,6 +654,29 @@ public class TTKTarget implements Comparable{
     for(timeToKill=0; timeToKill < 6000000; timeToKill++){
       //Add new stack
       if(!reloading){
+    	
+    	  
+       if(Main.weaponMode.equals(Constants.CONTINUOUS)){  //Beam weapon ramp-up damage 20% to 100% in 0.6 seconds -o
+       double ramp = 0.2 + (rampMult/600)*0.8;
+          if(ramp > 1) { ramp = 1; }
+          DoTBase = (Main.raw.base * Main.finalDamageMult) * Main.finalDeadAimMult * ramp;
+       	  baseImpactDamage = Main.impact.finalBase * ramp;
+          basePunctureDamage = Main.puncture.finalBase* ramp;
+          baseSlashDamage = Main.slash.finalBase* ramp;
+          baseFireDamage = Main.fire.finalBase* ramp;
+          baseIceDamage = Main.ice.finalBase* ramp;
+          baseElectricDamage = Main.electric.finalBase* ramp;
+          baseToxinDamage = Main.toxin.finalBase* ramp;
+          baseBlastDamage = Main.blast.finalBase* ramp;
+          baseCorrosiveDamage = Main.corrosive.finalBase* ramp;
+          baseGasDamage = Main.gas.finalBase* ramp;
+          baseMagneticDamage = Main.magnetic.finalBase* ramp;
+          baseRadiationDamage = Main.radiation.finalBase* ramp;
+          baseViralDamage = Main.viral.finalBase* ramp;            
+          rampMult++;
+        }
+       
+    	  
         shotCounter++;
         //is it time to fire a new projectile?
         if(shotCounter >= (millisceondsPerShot*millisecondMult)){
@@ -665,7 +689,7 @@ public class TTKTarget implements Comparable{
           localProjectileCount = Main.finalProjectileCount;
           if(Main.weaponMode.equals(Constants.FULL_AUTO_BULLET_RAMP)){
             localProjectileCount /= millisecondMult;
-          }
+          }          
           
           //Adjust Max Stats
           //Shields
@@ -713,8 +737,6 @@ public class TTKTarget implements Comparable{
                 }
               }
             }
-            
-            //Calculate Armor Reduction: Removed for being unnecessary -o
 
             //Deal Damage
             if(targetCurrentShields > 0.0){ //Removed armor affecting shields -o
@@ -792,7 +814,7 @@ public class TTKTarget implements Comparable{
             //Which Proc?
             String proc = potentialProcs.get(sleek);
             sleek++;
-            if(sleek > 5000) {
+            if(sleek > 2000) {
             	Collections.shuffle(potentialProcs);
             	sleek = 0;
             }
@@ -898,6 +920,7 @@ public class TTKTarget implements Comparable{
           
           //Check for Death
           if(targetCurrentHealth < 0.0){
+        	rampMult = 0;
             return timeToKill / 1000.0;
           }
           
@@ -912,6 +935,11 @@ public class TTKTarget implements Comparable{
       }else{
         //Are we still reloading?
         reloadTimeCounter++;
+        if(Main.weaponMode.equals(Constants.CONTINUOUS)){
+        if(reloadTimeCounter >= 800) {
+        	rampMult = 0; //Drops the continuous weapon ramp if not shooting for 0.8 seconds -o
+          }
+        }
         if(reloadTimeCounter >= reloadTimeMilliseconds){
           reloading = false;
           reloadTimeCounter = 0;
