@@ -221,6 +221,7 @@ public class Main {
 
   public static double globalToxin; //Added this to calculate gas proc damage -o
   public static int hunterMunitions; //Big league TTK time
+  public static boolean headShots = false;
   
   /**
    * ____________________________________________________________
@@ -607,7 +608,7 @@ public class Main {
       viral.base /= projectileCount;
     }
     
-    //Calculations based on weapon type    ---Removed stuff for beams because it was outdated
+    //Calculations based on weapon type    ---Removed stuff for beams because it was outdated -o
     if(weaponMode.equals(Constants.CHARGE)){
       double fireRateAddition = 60.0 / chargeTime / 60.0;
       fireRate += fireRateAddition;
@@ -1491,7 +1492,7 @@ public class Main {
     raw.finalBase =  impact.finalBase +
                       puncture.finalBase +
                       slash.finalBase +
-                      slash.finalBase +
+                      fire.finalBase +
                       ice.finalBase +
                       electric.finalBase +
                       toxin.finalBase +
@@ -1534,6 +1535,12 @@ public class Main {
         finalNormalShots = 0.0;
       }
     }
+    
+    if(selectedWeapon.isHeadShots()){
+    	 headShots=true;
+    }else{
+    	 headShots=false;
+    	  }
     
     if(weaponMode.equals(Constants.BURST)){
       if(selectedWeapon.isRefireCanceled()){
@@ -1584,6 +1591,7 @@ public class Main {
       gasStacks = calculateAverageStacks(finalStatusChance, 8.0);
     }
   }
+  
   
   /**
    * Calculates the damage per shot values
