@@ -13,6 +13,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.text.DecimalFormat;
+import java.util.Random;
 import java.util.Vector;
 
 import javax.swing.BoxLayout;
@@ -156,7 +157,7 @@ public class Main {
   protected static double flatDamageBonus = 0.0;
   protected static int mag = 0;
   protected static int ammoCap = 0;
-  protected static int burstCount = 0;
+  public static int burstCount = 0;
   
   
   /** Calculated Values **/
@@ -171,7 +172,7 @@ public class Main {
   public static double finalFireRate = 0.0;
   public static double finalReloadTime = 0.0;
   public static double finalProjectileCount = 0.0;
-  protected static double finalFirstShotDamageMult = 1.0;
+  public static double finalFirstShotDamageMult = 1.0;
   public static double finalStatusChance = 0.0;
   public static double finalStatusDuration = 1.0;
   public static double finalDamageMult = 1.0;
@@ -185,10 +186,10 @@ public class Main {
   //Misc Values
   protected static double procsPerSecond = 0.0;
   protected static double burstProcsPerSecond = 0.0;
-  protected static int slashStacks = 0;
-  protected static int fireStacks = 0;
-  protected static int toxinStacks = 0;
-  protected static int gasStacks = 0;
+  protected static double slashStacks = 0;
+  protected static double fireStacks = 0;
+  protected static double toxinStacks = 0;
+  protected static double gasStacks = 0;
   
   public static Damage raw = new Damage();
   public static Damage impact = new Damage();
@@ -219,9 +220,17 @@ public class Main {
   public static SurfaceDamage fossilized = new SurfaceDamage();
   public static SurfaceDamage sinew = new SurfaceDamage();
 
+  
   public static double globalToxin; //Added this to calculate gas proc damage -o
   public static int hunterMunitions; //Big league TTK time
   public static boolean headShots = false;
+  public static Random rng = new Random();
+  public static double bleedDoTDPS;
+  public static double poisonDoTDPS;
+  public static double heatDoTDPS;
+  public static double cloudDoTDPS;
+  public static double electricProcDPS;
+  public static double gasProcDPS;
   
   /**
    * ____________________________________________________________
@@ -543,7 +552,7 @@ public class Main {
     critChance = selectedWeapon.getCritChance();
     critMult = selectedWeapon.getCritMultiplier();
     projectileCount = selectedWeapon.getProjectiles();
-    firstShotDamageMult = 1.0;
+    firstShotDamageMult = 1;
     statusChance = selectedWeapon.getStatusChance();
     mag = selectedWeapon.getMagSize();
     ammoCap = selectedWeapon.getTotalAmmo();
@@ -608,12 +617,10 @@ public class Main {
       viral.base /= projectileCount;
     }
     
-    //Calculations based on weapon type    ---Removed stuff for beams because it was outdated -o
+    //Calculations based on weapon type    ---Removed stuff for beams and burst because it was outdated -o
     if(weaponMode.equals(Constants.CHARGE)){
       double fireRateAddition = 60.0 / chargeTime / 60.0;
       fireRate += fireRateAddition;
-    }else if(weaponMode.equals(Constants.BURST)){
-      projectileCount *= burstCount;
     }
     
     //Mod Vectors
@@ -1380,7 +1387,6 @@ public class Main {
     	finalDamageMult *= multishot; //Beams don't get more projectiles, so I turned multishot into damage -o
       }
     }
-    
     finalFirstShotDamageMult = firstShotDamageMult;
     for(int i = 0; i < firstShotDamageMods.size(); i++){
       finalFirstShotDamageMult += firstShotDamageMult*firstShotDamageMods.get(i);
@@ -1518,24 +1524,10 @@ public class Main {
       finalInfestedMult += infestedMods.get(i);
     }
     
-    if(weaponMode.equals(Constants.BURST)){
-      finalCritShots = (finalMag / burstCount) * finalCritChance;
-      if(finalCritShots > finalMag){
-        finalCritShots = finalMag;
-      }
-      
-      finalNormalShots = (finalMag / burstCount) - finalCritShots;
-      if(finalNormalShots < 0.0){
-        finalNormalShots = 0.0;
-      }
-    }else{
       finalCritShots = finalMag * finalCritChance;
+      if(finalCritShots > finalMag) finalCritShots = finalMag;
       finalNormalShots = finalMag - finalCritShots;
-      if(finalNormalShots < 0.0){
-        finalNormalShots = 0.0;
-      }
-    }
-    
+           
     if(selectedWeapon.isHeadShots()){
     	 headShots=true;
     }else{
@@ -1564,7 +1556,7 @@ public class Main {
       double fourthFireDelay = baseFireDelay * 2;
       finalIterationTime = (firstFireDelay + secondFireDelay + thirdFireDelay + fourthFireDelay + ((finalMag - 4) * baseFireDelay)) + finalReloadTime;
     }else{
-      finalIterationTime = (finalMag / finalFireRate) + finalReloadTime;
+      finalIterationTime = ((finalMag-1) / finalFireRate) + finalReloadTime;
     }
     
     finalIterationsPerMinute = 60.0 / finalIterationTime;
@@ -1575,20 +1567,27 @@ public class Main {
    */
   protected static void calculateMiscValues(){
 
+    double totalPhysical = Main.impact.finalBase + Main.puncture.finalBase + Main.slash.finalBase;
+    double totalElemental = Main.raw.finalBase - totalPhysical;
+    double SlashProcRate = (4 * Main.slash.finalBase) / ((4* totalPhysical) + totalElemental)*finalStatusChance;
+    double FireProcRate = (Main.fire.finalBase / ((4 * totalPhysical) + totalElemental))*finalStatusChance;
+    double ToxinProcRate = (Main.toxin.finalBase / ((4 * totalPhysical) + totalElemental))*finalStatusChance;
+    double GasProcRate = (Main.gas.finalBase / ((4 * totalPhysical) + totalElemental))*finalStatusChance;
+	  
     procsPerSecond = ((finalProjectileCount * finalMag) * finalStatusChance) * (60 / finalIterationTime / 60);
     burstProcsPerSecond = ((finalProjectileCount * finalMag) * finalStatusChance) * (60 / (finalMag / finalFireRate) / 60);
       
     if(slash.finalBase > 0.0){
-      slashStacks = calculateAverageStacks(finalStatusChance, 6.0);
+      slashStacks = calculateAverageStacks("Slash", SlashProcRate, 6.0);
     }
     if(fire.finalBase > 0.0){
-      fireStacks = calculateAverageStacks(finalStatusChance, 6.0);
+      fireStacks = calculateAverageStacks("Fire", FireProcRate, 6.0);
     }
     if(toxin.finalBase > 0.0){
-      toxinStacks = calculateAverageStacks(finalStatusChance, 8.0);
+      toxinStacks = calculateAverageStacks("Toxin", ToxinProcRate, 8.0);
     }
     if(gas.finalBase > 0.0){
-      gasStacks = calculateAverageStacks(finalStatusChance, 8.0);
+      gasStacks = calculateAverageStacks("Gas", GasProcRate, 8.0);
     }
   }
   
@@ -1658,6 +1657,8 @@ public class Main {
     cloneFlesh.perShot += radiation.perShot;
     cloneFlesh.perShot += corrosive.perShot;
     cloneFlesh.perShot += viral.perShot * 1.75;
+    cloneFlesh.perShot *= finalGrineerMult;
+    
 
     ferrite.perShot += impact.perShot;
     ferrite.perShot += puncture.perShot * 1.5;
@@ -1700,6 +1701,7 @@ public class Main {
     mechanical.perShot += radiation.perShot;
     mechanical.perShot += corrosive.perShot;
     mechanical.perShot += viral.perShot * 0.75;
+    mechanical.perShot *= finalGrineerMult;
     
     corpusFlesh.perShot += impact.perShot * 0.75;
     corpusFlesh.perShot += puncture.perShot;
@@ -1714,6 +1716,7 @@ public class Main {
     corpusFlesh.perShot += radiation.perShot;
     corpusFlesh.perShot += corrosive.perShot;
     corpusFlesh.perShot += viral.perShot * 1.5;
+    corpusFlesh.perShot *= finalCorpusMult;
     
     shield.perShot += impact.perShot * 1.5;
     shield.perShot += puncture.perShot * 0.85;
@@ -1728,6 +1731,7 @@ public class Main {
     shield.perShot += radiation.perShot * 0.75;
     shield.perShot += corrosive.perShot;
     shield.perShot += viral.perShot;
+    shield.perShot *= finalCorpusMult;
     
     protoShield.perShot += impact.perShot * 1.15;
     protoShield.perShot += puncture.perShot * 0.5;
@@ -1742,6 +1746,7 @@ public class Main {
     protoShield.perShot += radiation.perShot;
     protoShield.perShot += corrosive.perShot * 0.5;
     protoShield.perShot += viral.perShot;
+    protoShield.perShot *= finalCorpusMult;
     
     robotic.perShot += impact.perShot;
     robotic.perShot += puncture.perShot * 1.25;
@@ -1756,6 +1761,7 @@ public class Main {
     robotic.perShot += radiation.perShot * 1.25;
     robotic.perShot += corrosive.perShot;
     robotic.perShot += viral.perShot;
+    robotic.perShot *= finalCorpusMult;
     
     infestedFlesh.perShot += impact.perShot;
     infestedFlesh.perShot += puncture.perShot;
@@ -1770,6 +1776,7 @@ public class Main {
     infestedFlesh.perShot += radiation.perShot;
     infestedFlesh.perShot += corrosive.perShot;
     infestedFlesh.perShot += viral.perShot;
+    infestedFlesh.perShot *= finalInfestedMult;
     
     fossilized.perShot += impact.perShot;
     fossilized.perShot += puncture.perShot;
@@ -1784,6 +1791,7 @@ public class Main {
     fossilized.perShot += radiation.perShot * 0.25;
     fossilized.perShot += corrosive.perShot * 1.75;
     fossilized.perShot += viral.perShot;
+    fossilized.perShot *= finalInfestedMult;
     
     sinew.perShot += impact.perShot;
     sinew.perShot += puncture.perShot * 1.25;
@@ -1798,6 +1806,7 @@ public class Main {
     sinew.perShot += radiation.perShot * 1.5;
     sinew.perShot += corrosive.perShot;
     sinew.perShot += viral.perShot;
+    sinew.perShot *= finalInfestedMult;
     
     //Calculate crit damage per shot values
     raw.critPerShot = raw.perShot * finalCritMult;
@@ -1829,36 +1838,36 @@ public class Main {
     fossilized.critPerShot = fossilized.perShot * finalCritMult;
     sinew.critPerShot = sinew.perShot * finalCritMult;
 
-    
+    finalFirstShotDamageMult -= 1;
     //Calculate first-shot damage
-    raw.firstShot = raw.critPerShot * finalFirstShotDamageMult;
-    impact.firstShot = impact.critPerShot * finalFirstShotDamageMult;
-    puncture.firstShot = puncture.critPerShot * finalFirstShotDamageMult;
-    slash.firstShot = slash.critPerShot * finalFirstShotDamageMult;
-    fire.firstShot = fire.critPerShot * finalFirstShotDamageMult;
-    ice.firstShot = ice.critPerShot * finalFirstShotDamageMult;
-    electric.firstShot = electric.critPerShot * finalFirstShotDamageMult;
-    toxin.firstShot = toxin.critPerShot * finalFirstShotDamageMult;
-    blast.firstShot = blast.critPerShot * finalFirstShotDamageMult;
-    magnetic.firstShot = magnetic.critPerShot * finalFirstShotDamageMult;
-    gas.firstShot = gas.critPerShot * finalFirstShotDamageMult;
-    radiation.firstShot = radiation.critPerShot * finalFirstShotDamageMult;
-    corrosive.firstShot = corrosive.critPerShot * finalFirstShotDamageMult;
-    viral.firstShot = viral.critPerShot * finalFirstShotDamageMult;
-    corpus.firstShot = corpus.critPerShot * finalFirstShotDamageMult;
-    grineer.firstShot = grineer.critPerShot * finalFirstShotDamageMult;
-    infested.firstShot = infested.critPerShot * finalFirstShotDamageMult;
-    cloneFlesh.firstShot = cloneFlesh.critPerShot * finalFirstShotDamageMult;
-    ferrite.firstShot = ferrite.critPerShot * finalFirstShotDamageMult;
-    alloy.firstShot = alloy.critPerShot * finalFirstShotDamageMult;
-    mechanical.firstShot = mechanical.critPerShot * finalFirstShotDamageMult;
-    corpusFlesh.firstShot = corpusFlesh.critPerShot * finalFirstShotDamageMult;
-    shield.firstShot = shield.critPerShot * finalFirstShotDamageMult;
-    protoShield.firstShot = protoShield.critPerShot * finalFirstShotDamageMult;
-    robotic.firstShot = robotic.critPerShot * finalFirstShotDamageMult;
-    infestedFlesh.firstShot = infestedFlesh.critPerShot * finalFirstShotDamageMult;
-    fossilized.firstShot = fossilized.critPerShot * finalFirstShotDamageMult;
-    sinew.firstShot = sinew.critPerShot * finalFirstShotDamageMult;
+    raw.firstShot = (raw.perShot * finalNormalShots + raw.critPerShot * finalCritShots)/finalMag * finalFirstShotDamageMult;
+    impact.firstShot = (impact.critPerShot * finalCritShots + impact.perShot * finalNormalShots)/finalMag * finalFirstShotDamageMult;
+    puncture.firstShot = (puncture.critPerShot * finalCritShots + puncture.perShot * finalNormalShots)/finalMag * finalFirstShotDamageMult;
+    slash.firstShot = (slash.critPerShot * finalCritShots + slash.perShot * finalNormalShots)/finalMag * finalFirstShotDamageMult;
+    fire.firstShot = (fire.critPerShot * finalCritShots + fire.perShot * finalNormalShots)/finalMag * finalFirstShotDamageMult;
+    ice.firstShot = (ice.critPerShot * finalCritShots + ice.perShot * finalNormalShots)/finalMag * finalFirstShotDamageMult;
+    electric.firstShot = (electric.critPerShot * finalCritShots + electric.perShot * finalNormalShots)/finalMag * finalFirstShotDamageMult;
+    toxin.firstShot = (toxin.critPerShot * finalCritShots + toxin.perShot * finalNormalShots)/finalMag * finalFirstShotDamageMult;
+    blast.firstShot = (blast.critPerShot * finalCritShots + blast.perShot * finalNormalShots)/finalMag * finalFirstShotDamageMult;
+    magnetic.firstShot = (magnetic.critPerShot * finalCritShots + magnetic.perShot * finalNormalShots)/finalMag * finalFirstShotDamageMult;
+    gas.firstShot = (gas.critPerShot * finalCritShots + gas.perShot * finalNormalShots)/finalMag * finalFirstShotDamageMult;
+    radiation.firstShot = (radiation.critPerShot * finalCritShots + radiation.perShot * finalNormalShots)/finalMag * finalFirstShotDamageMult;
+    corrosive.firstShot = (corrosive.critPerShot * finalCritShots + corrosive.perShot * finalNormalShots)/finalMag * finalFirstShotDamageMult;
+    viral.firstShot = (viral.critPerShot * finalCritShots + viral.perShot * finalNormalShots)/finalMag * finalFirstShotDamageMult;
+    corpus.firstShot = (corpus.critPerShot * finalCritShots + corpus.perShot * finalNormalShots)/finalMag * finalFirstShotDamageMult;
+    grineer.firstShot = (grineer.critPerShot * finalCritShots + grineer.perShot * finalNormalShots)/finalMag * finalFirstShotDamageMult;
+    infested.firstShot = (infested.critPerShot * finalCritShots + infested.perShot * finalNormalShots)/finalMag * finalFirstShotDamageMult;
+    cloneFlesh.firstShot = (cloneFlesh.critPerShot * finalCritShots + cloneFlesh.perShot * finalNormalShots)/finalMag * finalFirstShotDamageMult;
+    ferrite.firstShot = (ferrite.critPerShot * finalCritShots + ferrite.perShot * finalNormalShots)/finalMag * finalFirstShotDamageMult;
+    alloy.firstShot = (alloy.critPerShot * finalCritShots + alloy.perShot * finalNormalShots)/finalMag * finalFirstShotDamageMult;
+    mechanical.firstShot = (mechanical.critPerShot * finalCritShots + mechanical.perShot * finalNormalShots)/finalMag * finalFirstShotDamageMult;
+    corpusFlesh.firstShot = (corpusFlesh.critPerShot * finalCritShots + corpusFlesh.perShot * finalNormalShots)/finalMag * finalFirstShotDamageMult;
+    shield.firstShot = (shield.critPerShot * finalCritShots + shield.perShot * finalNormalShots)/finalMag * finalFirstShotDamageMult;
+    protoShield.firstShot = (protoShield.critPerShot * finalCritShots + protoShield.perShot * finalNormalShots)/finalMag * finalFirstShotDamageMult;
+    robotic.firstShot = (robotic.critPerShot * finalCritShots + robotic.perShot * finalNormalShots)/finalMag * finalFirstShotDamageMult;
+    infestedFlesh.firstShot = (infestedFlesh.critPerShot * finalCritShots + infestedFlesh.perShot * finalNormalShots)/finalMag * finalFirstShotDamageMult;
+    fossilized.firstShot = (fossilized.critPerShot * finalCritShots + fossilized.perShot * finalNormalShots)/finalMag * finalFirstShotDamageMult;
+    sinew.firstShot = (sinew.critPerShot * finalCritShots + sinew.perShot * finalNormalShots)/finalMag * finalFirstShotDamageMult;
     
   }
   
@@ -1962,41 +1971,45 @@ public class Main {
     fossilized.perSecond = fossilized.perMinute / 60.0;
     sinew.perSecond = sinew.perMinute / 60.0;
     
-    //Add in DoTs
-    double rawBase = ((raw.base * finalDamageMult) * finalProjectileCount) * finalDeadAimMult;
+    //Add in DoTs   
+    //It's all so tiresome -o
+    double totalPhysical = Main.impact.finalBase + Main.puncture.finalBase + Main.slash.finalBase;
+    double totalElemental = Main.raw.finalBase - totalPhysical;
+    double ElectricProcRate = (Main.electric.finalBase / ((4 * totalPhysical) + totalElemental))*finalStatusChance;
+    double GasProcRate = (Main.gas.finalBase / ((4 * totalPhysical) + totalElemental))*finalStatusChance;
+   
+    double rawBase = (raw.base * finalDamageMult) * finalDeadAimMult * (1+finalFirstShotDamageMult/finalMag);
     double critBase = rawBase * finalCritMult;
-    double DoTBase = (((rawBase * finalNormalShots) + (critBase * finalCritShots) + raw.firstShot) / finalMag);
+    double DoTBase = (((rawBase * finalNormalShots) + (critBase * finalCritShots)) / finalMag);
+    double toxinBase = (toxin.finalBase - (toxin.base * finalDamageMult))*(1+finalFirstShotDamageMult/finalMag)*(finalCritShots*finalCritMult+finalNormalShots) / finalMag;
+    double heatBase = (fire.finalBase - (fire.base * finalDamageMult))*(1+finalFirstShotDamageMult/finalMag)*(finalCritShots*finalCritMult+finalNormalShots) / finalMag;
+    double electricBase = (electric.finalBase - (electric.base * finalDamageMult))*(1+finalFirstShotDamageMult/finalMag)*(finalCritShots*finalCritMult+finalNormalShots) / finalMag;
     double bleedDamage =  DoTBase * 0.35;
-    double poisonDamage = DoTBase * 0.5;
-    if(poisonDamage < 10.0){
-      poisonDamage = 10.0;
-    }
-    double heatDamage = DoTBase * 0.5;
-    double cloudDamage = DoTBase * 0.5;
-    if(cloudDamage < 10.0){
-      cloudDamage = 10.0;
-    }
-    double bleedDoTDPS = slashStacks * bleedDamage;
-    double poisonDoTDPS = toxinStacks * poisonDamage;
-    double heatDoTDPS = fireStacks * heatDamage;
-    double cloudDoTDPS = gasStacks * cloudDamage;
-    double electricProcDPS = procsPerSecond * DoTBase;
-    double DotTotal = bleedDoTDPS + poisonDoTDPS + heatDoTDPS + cloudDoTDPS + electricProcDPS;
-    raw.perSecond += DotTotal;
-    corpus.perSecond += DotTotal;
-    grineer.perSecond += DotTotal;
-    infested.perSecond += DotTotal;
-    cloneFlesh.perSecond += DotTotal;
-    ferrite.perSecond += DotTotal;
-    alloy.perSecond += DotTotal;
-    mechanical.perSecond += DotTotal;
-    corpusFlesh.perSecond += DotTotal;
-    shield.perSecond += DotTotal;
-    protoShield.perSecond += DotTotal;
-    robotic.perSecond += DotTotal;
-    infestedFlesh.perSecond += DotTotal;
-    fossilized.perSecond += DotTotal;
-    sinew.perSecond += DotTotal;
+    double poisonDamage = (DoTBase + toxinBase) * 0.5;
+    double heatDamage = (DoTBase + heatBase) * 0.5;
+    double cloudDamage = rawBase * (0.25 * (1 + globalToxin)*(1 + globalToxin)) * (1+finalFirstShotDamageMult/finalMag)*(finalCritShots*finalCritMult+finalNormalShots) /finalMag;
+    bleedDoTDPS = slashStacks * bleedDamage;
+    poisonDoTDPS = toxinStacks * poisonDamage;
+    heatDoTDPS = fireStacks * heatDamage;
+    cloudDoTDPS = gasStacks * cloudDamage;
+    electricProcDPS = ElectricProcRate * (DoTBase + electricBase) * 0.5 * finalProjectileCount;
+    gasProcDPS = GasProcRate * DoTBase * (1 + globalToxin) * 0.5 * finalProjectileCount;
+    
+    raw.perSecond += (bleedDoTDPS + poisonDoTDPS + heatDoTDPS + cloudDoTDPS + electricProcDPS + gasProcDPS);
+    corpus.perSecond += (bleedDoTDPS + poisonDoTDPS + heatDoTDPS + cloudDoTDPS*finalCorpusMult*finalCorpusMult + electricProcDPS + gasProcDPS*finalCorpusMult);
+    grineer.perSecond += (bleedDoTDPS + poisonDoTDPS + heatDoTDPS + cloudDoTDPS*finalGrineerMult*finalGrineerMult + electricProcDPS + gasProcDPS*finalGrineerMult);
+    infested.perSecond += (bleedDoTDPS + poisonDoTDPS + (heatDoTDPS * 1.25) + cloudDoTDPS*finalInfestedMult*finalInfestedMult + electricProcDPS + gasProcDPS*finalInfestedMult);
+    cloneFlesh.perSecond += (bleedDoTDPS + poisonDoTDPS + (heatDoTDPS * 1.25) + cloudDoTDPS*finalGrineerMult*finalGrineerMult + electricProcDPS + gasProcDPS*finalGrineerMult);
+    ferrite.perSecond += (bleedDoTDPS + (poisonDoTDPS * 1.25) + heatDoTDPS + (cloudDoTDPS * 1.25) + electricProcDPS + gasProcDPS*1.25);
+    alloy.perSecond += (bleedDoTDPS + poisonDoTDPS + heatDoTDPS + cloudDoTDPS + (electricProcDPS * 0.5) + gasProcDPS);
+    mechanical.perSecond += (bleedDoTDPS + (poisonDoTDPS * 0.75) + heatDoTDPS + (cloudDoTDPS * 0.75*finalGrineerMult*finalGrineerMult) + (electricProcDPS * 1.5) + gasProcDPS*0.75*finalGrineerMult);
+    corpusFlesh.perSecond += (bleedDoTDPS + (poisonDoTDPS * 1.5) + heatDoTDPS + (cloudDoTDPS * 1.5*finalCorpusMult*finalCorpusMult) + electricProcDPS + gasProcDPS*1.5*finalCorpusMult);
+    shield.perSecond += (heatDoTDPS + electricProcDPS);
+    protoShield.perSecond += ((heatDoTDPS * 0.5) + electricProcDPS);
+    robotic.perSecond += (bleedDoTDPS + (poisonDoTDPS * 0.75) + heatDoTDPS + (cloudDoTDPS * 0.75*finalCorpusMult*finalCorpusMult) + (electricProcDPS * 1.5) + gasProcDPS*0.75*finalCorpusMult);
+    infestedFlesh.perSecond += (bleedDoTDPS + poisonDoTDPS + (heatDoTDPS * 1.5) + cloudDoTDPS*finalInfestedMult*finalInfestedMult + electricProcDPS + gasProcDPS*finalInfestedMult);
+    fossilized.perSecond += (bleedDoTDPS + (poisonDoTDPS * 0.5) + heatDoTDPS + (cloudDoTDPS*finalInfestedMult*finalInfestedMult * 0.5) + electricProcDPS + gasProcDPS*finalInfestedMult*0.5);
+    sinew.perSecond += (bleedDoTDPS + poisonDoTDPS + heatDoTDPS + cloudDoTDPS*finalInfestedMult*finalInfestedMult + electricProcDPS + gasProcDPS*finalInfestedMult);
   }
   
   protected static void calculateBurstDamagePerSecond(){
@@ -2032,53 +2045,34 @@ public class Main {
     sinew.rawPerSecond = sinew.perIteration * burstTime;
     
     //Add in DoTs
-    double rawBase = ((raw.base * finalDamageMult) * finalProjectileCount) * finalDeadAimMult;
-    double critBase = rawBase * finalCritMult;
-    double DoTBase = (((rawBase * finalNormalShots) + (critBase * finalCritShots) + raw.firstShot) / finalMag);
-    double bleedDamage =  DoTBase * 0.35;
-    double poisonDamage = DoTBase * 0.5;
-    if(poisonDamage < 10.0){
-      poisonDamage = 10.0;
-    }
-    double heatDamage = DoTBase * 0.5;
-    double cloudDamage = DoTBase * 0.5;
-    if(cloudDamage < 10.0){
-      cloudDamage = 10.0;
-    }
-    double bleedDoTDPS = slashStacks * bleedDamage;
-    double poisonDoTDPS = toxinStacks * poisonDamage;
-    double heatDoTDPS = fireStacks * heatDamage;
-    double cloudDoTDPS = gasStacks * cloudDamage;
-    double electricProcDPS = procsPerSecond * DoTBase;
-    double DotTotal = bleedDoTDPS + poisonDoTDPS + heatDoTDPS + cloudDoTDPS + electricProcDPS;
-    raw.rawPerSecond += DotTotal;
-    corpus.rawPerSecond += DotTotal;
-    grineer.rawPerSecond += DotTotal;
-    infested.rawPerSecond += DotTotal;
-    cloneFlesh.rawPerSecond += DotTotal;
-    ferrite.rawPerSecond += DotTotal;
-    alloy.rawPerSecond += DotTotal;
-    mechanical.rawPerSecond += DotTotal;
-    corpusFlesh.rawPerSecond += DotTotal;
-    shield.rawPerSecond += DotTotal;
-    protoShield.rawPerSecond += DotTotal;
-    robotic.rawPerSecond += DotTotal;
-    infestedFlesh.rawPerSecond += DotTotal;
-    fossilized.rawPerSecond += DotTotal;
-    sinew.rawPerSecond += DotTotal;
+    raw.rawPerSecond += (bleedDoTDPS + poisonDoTDPS + heatDoTDPS + cloudDoTDPS + electricProcDPS + gasProcDPS);
+    corpus.rawPerSecond += (bleedDoTDPS + poisonDoTDPS + heatDoTDPS + cloudDoTDPS*finalCorpusMult*finalCorpusMult + electricProcDPS + gasProcDPS*finalCorpusMult);
+    grineer.rawPerSecond += (bleedDoTDPS + poisonDoTDPS + heatDoTDPS + cloudDoTDPS*finalGrineerMult*finalGrineerMult + electricProcDPS + gasProcDPS*finalGrineerMult);
+    infested.rawPerSecond += (bleedDoTDPS + poisonDoTDPS + (heatDoTDPS * 1.25) + cloudDoTDPS*finalInfestedMult*finalInfestedMult + electricProcDPS + gasProcDPS*finalInfestedMult);
+    cloneFlesh.rawPerSecond += (bleedDoTDPS + poisonDoTDPS + (heatDoTDPS * 1.25) + cloudDoTDPS*finalGrineerMult*finalGrineerMult + electricProcDPS + gasProcDPS*finalGrineerMult);
+    ferrite.rawPerSecond += (bleedDoTDPS + (poisonDoTDPS * 1.25) + heatDoTDPS + (cloudDoTDPS * 1.25) + electricProcDPS + gasProcDPS*1.25);
+    alloy.rawPerSecond += (bleedDoTDPS + poisonDoTDPS + heatDoTDPS + cloudDoTDPS + (electricProcDPS * 0.5) + gasProcDPS);
+    mechanical.rawPerSecond += (bleedDoTDPS + (poisonDoTDPS * 0.75) + heatDoTDPS + (cloudDoTDPS * 0.75*finalGrineerMult*finalGrineerMult) + (electricProcDPS * 1.5) + gasProcDPS*0.75*finalGrineerMult);
+    corpusFlesh.rawPerSecond += (bleedDoTDPS + (poisonDoTDPS * 1.5) + heatDoTDPS + (cloudDoTDPS * 1.5*finalCorpusMult*finalCorpusMult) + electricProcDPS + gasProcDPS*1.5*finalCorpusMult);
+    shield.rawPerSecond += (heatDoTDPS + electricProcDPS);
+    protoShield.rawPerSecond += ((heatDoTDPS * 0.5) + electricProcDPS);
+    robotic.rawPerSecond += (bleedDoTDPS + (poisonDoTDPS * 0.75) + heatDoTDPS + (cloudDoTDPS * 0.75*finalCorpusMult*finalCorpusMult) + (electricProcDPS * 1.5) + gasProcDPS*0.75*finalCorpusMult);
+    infestedFlesh.rawPerSecond += (bleedDoTDPS + poisonDoTDPS + (heatDoTDPS * 1.5) + cloudDoTDPS*finalInfestedMult*finalInfestedMult + electricProcDPS + gasProcDPS*finalInfestedMult);
+    fossilized.rawPerSecond += (bleedDoTDPS + (poisonDoTDPS * 0.5) + heatDoTDPS + (cloudDoTDPS*finalInfestedMult*finalInfestedMult * 0.5) + electricProcDPS + gasProcDPS*finalInfestedMult*0.5);
+    sinew.rawPerSecond += (bleedDoTDPS + poisonDoTDPS + heatDoTDPS + cloudDoTDPS*finalInfestedMult*finalInfestedMult + electricProcDPS + gasProcDPS*finalInfestedMult);
   }
   
   /**
    * Calculates the average number of stacks of a given effect
    */
-  protected static int calculateAverageStacks(double procRate, double duration){
-    
+  protected static double calculateAverageStacks(String proc, double procRate, double duration){
+	  
     double millisceondsPerShot = 1000.0 / finalFireRate;
     double stacksPerShot = 1.0 * procRate;
     double reloadTimeMilliseconds = finalReloadTime * 1000.0;
     double stackTotal = 0.0;
     double moddedDuration = duration * finalStatusDuration;
-    int averageStacks = 0;
+    double averageStacks = 0;
     int reloadTimeCounter = 0;
     int shotCounter = 0;
     int iterations = 0;
@@ -2093,14 +2087,19 @@ public class Main {
         shotCounter++;
         //is it time to fire a new projectile?
         if(shotCounter >= millisceondsPerShot){
-          //Add stacks
-          for(int p = 0; p < finalProjectileCount; p++){
-            stackTotal += stacksPerShot;
-            if(stackTotal > 1.0){
-              stackVec.add(moddedDuration);
-              stackTotal--;
-            }
-          }
+          //Add stacks 
+        	
+      	  if(proc.equals("Slash") && hunterMunitions > 0){ //adding hunter munitions slash stacks -o
+      		double munitionsStack = (finalCritChance * 0.3);
+       		if(munitionsStack > 0.3) munitionsStack = 0.3;
+       	    stackTotal += (munitionsStack*finalProjectileCount);	
+          }          	  
+          stackTotal += (stacksPerShot*finalProjectileCount);   
+          
+          if(stackTotal > 1.0){
+            stackVec.add(moddedDuration);
+            stackTotal--;
+           }   
           shotCounter = 0;
           //Have we unloaded the whole mag and need to reload?
           iterations++;
@@ -2139,7 +2138,10 @@ public class Main {
     for(int i = 0; i < stackCountVec.size(); i++){
       averageStacks += stackCountVec.get(i);
     }
-    averageStacks /= stackCountVec.size();
+    averageStacks /= stackCountVec.size();    
+    if(proc.equals("Fire") && averageStacks > 0) {  //Fire procs don't stack -o
+    averageStacks = 1;
+    }    
     return averageStacks;
   }
   
@@ -2294,47 +2296,47 @@ public class Main {
     output.append("\nCrit Damage Per Shot to Corpus :: "+f.format(corpus.critPerShot));
     output.append("\nCrit Damage Per Shot to Grineer :: "+f.format(grineer.critPerShot));
     output.append("\nCrit Damage Per Shot to Infested :: "+f.format(infested.critPerShot));
-    if(finalFirstShotDamageMult > 1.0){
+    if(finalFirstShotDamageMult > 0){
       output.append("\n::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::");
-      output.append("\nRaw First Shot Damage :: "+f.format(raw.firstShot));
+      output.append("\nRaw First Shot Damage :: "+f.format(raw.firstShot*(1+finalFirstShotDamageMult)/finalFirstShotDamageMult));
       if(impact.firstShot > 0.0){
-        output.append("\nImpact First Shot Damage :: "+f.format(impact.firstShot));
+        output.append("\nImpact First Shot Damage :: "+f.format(impact.firstShot*(1+finalFirstShotDamageMult)/finalFirstShotDamageMult));
       }
       if(puncture.firstShot > 0.0){
-        output.append("\nPuncture First Shot Damage :: "+f.format(puncture.firstShot));
+        output.append("\nPuncture First Shot Damage :: "+f.format(puncture.firstShot*(1+finalFirstShotDamageMult)/finalFirstShotDamageMult));
       }
       if(slash.firstShot > 0.0){
-        output.append("\nSlash First Shot Damage :: "+f.format(slash.firstShot));
+        output.append("\nSlash First Shot Damage :: "+f.format(slash.firstShot*(1+finalFirstShotDamageMult)/finalFirstShotDamageMult));
       }
       if(fire.firstShot > 0.0){
-        output.append("\nFire First Shot Damage :: "+f.format(fire.firstShot));
+        output.append("\nFire First Shot Damage :: "+f.format(fire.firstShot*(1+finalFirstShotDamageMult)/finalFirstShotDamageMult));
       }
       if(ice.firstShot > 0.0){
-        output.append("\nIce First Shot Damage :: "+f.format(ice.firstShot));
+        output.append("\nIce First Shot Damage :: "+f.format(ice.firstShot*(1+finalFirstShotDamageMult)/finalFirstShotDamageMult));
       }
       if(electric.firstShot > 0.0){
-        output.append("\nElectric First Shot Damage :: "+f.format(electric.firstShot));
+        output.append("\nElectric First Shot Damage :: "+f.format(electric.firstShot*(1+finalFirstShotDamageMult)/finalFirstShotDamageMult));
       }
       if(toxin.firstShot > 0.0){
-        output.append("\nToxin First Shot Damage :: "+f.format(toxin.firstShot));
+        output.append("\nToxin First Shot Damage :: "+f.format(toxin.firstShot*(1+finalFirstShotDamageMult)/finalFirstShotDamageMult));
       }
       if(blast.firstShot > 0.0){
-        output.append("\nBlast First Shot Damage :: "+f.format(blast.firstShot));
+        output.append("\nBlast First Shot Damage :: "+f.format(blast.firstShot*(1+finalFirstShotDamageMult)/finalFirstShotDamageMult));
       }
       if(magnetic.firstShot > 0.0){
-        output.append("\nMagnetic First Shot Damage :: "+f.format(magnetic.firstShot));
+        output.append("\nMagnetic First Shot Damage :: "+f.format(magnetic.firstShot*(1+finalFirstShotDamageMult)/finalFirstShotDamageMult));
       }
       if(gas.firstShot > 0.0){
-        output.append("\nGas First Shot Damage :: "+f.format(gas.firstShot));
+        output.append("\nGas First Shot Damage :: "+f.format(gas.firstShot*(1+finalFirstShotDamageMult)/finalFirstShotDamageMult));
       }
       if(radiation.firstShot > 0.0){
-        output.append("\nRadiation First Shot Damage :: "+f.format(radiation.firstShot));
+        output.append("\nRadiation First Shot Damage :: "+f.format(radiation.firstShot*(1+finalFirstShotDamageMult)/finalFirstShotDamageMult));
       }
       if(corrosive.firstShot > 0.0){
-        output.append("\nCorrosive First Shot Damage :: "+f.format(corrosive.firstShot));
+        output.append("\nCorrosive First Shot Damage :: "+f.format(corrosive.firstShot*(1+finalFirstShotDamageMult)/finalFirstShotDamageMult));
       }
       if(viral.firstShot > 0.0){
-        output.append("\nViral First Shot Damage :: "+f.format(viral.firstShot));
+        output.append("\nViral First Shot Damage :: "+f.format(viral.firstShot*(1+finalFirstShotDamageMult)/finalFirstShotDamageMult));
       }
       output.append("\nFirst Shot Damage to Clone Flesh :: "+f.format(cloneFlesh.firstShot));
       output.append("\nFirst Shot Damage to Ferrite Armor :: "+f.format(ferrite.firstShot));
@@ -2387,6 +2389,17 @@ public class Main {
     output.append("\n::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::");
     output.append(selectedWeapon.getModsOutput());
     output.append("\nCorrosive Projections: "+corrosiveProjectionBox.getSelectedItem());
+    
+    output.append("\n::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::"); //showing stuff people care about without scrolling
+    if(poisonDoTDPS > 0) output.append("\nDPS From Poison Procs :: "+f.format(poisonDoTDPS));
+    if(electricProcDPS > 0) output.append("\nDPS From Electric Procs :: "+f.format(electricProcDPS));
+    if(heatDoTDPS > 0) output.append("\nDPS From Fire Procs :: "+f.format(heatDoTDPS));
+    if(cloudDoTDPS > 0) output.append("\nDPS From Gas Procs :: "+f.format(cloudDoTDPS + gasProcDPS));
+    if(bleedDoTDPS > 0) output.append("\nDPS From Bleeds :: "+f.format(bleedDoTDPS));
+    output.append("\nTotal Damage Per Second :: "+f.format(raw.perSecond));
+    output.append("\nTotal Burst Damage Per Second :: "+f.format(raw.rawPerSecond));
+
+        
     if(useComplexTTK){
       output.append("\n::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::");
       String ttkTableHeader = "\nTarget Name";
