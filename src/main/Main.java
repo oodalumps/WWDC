@@ -1319,10 +1319,11 @@ public class Main {
     }
     
     //Calculate finals
-    finalMag = mag;
+    double tempMag = mag;
     for(int i = 0; i < magMods.size(); i++){
-      finalMag += mag*magMods.get(i);
+      tempMag += mag*magMods.get(i);
     }
+     finalMag = (int) Math.round(tempMag);
     for(int i = 0; i < flatMagMods.size(); i++){
       finalMag += flatMagMods.get(i);
     }
@@ -2096,9 +2097,11 @@ public class Main {
           }          	  
           stackTotal += (stacksPerShot*finalProjectileCount);   
           
+      	for(int s = 0 ; stackTotal > s ; s++)  {
           if(stackTotal > 1.0){
-            stackVec.add(moddedDuration);
-            stackTotal--;
+                stackVec.add(moddedDuration);
+                stackTotal--;	
+        	}
            }   
           shotCounter = 0;
           //Have we unloaded the whole mag and need to reload?

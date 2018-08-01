@@ -64,7 +64,7 @@ public class WeaponPanel extends JPanel implements ActionListener {
   /** JLabels **/
   protected JLabel weaponLabel = new JLabel("Weapon - ");
   protected JLabel refireCancelLabel = new JLabel("Refire Cancel - ");
-  protected JLabel headShotsLabel = new JLabel("Headshots - ");
+  protected JLabel headShotsLabel = new JLabel("Headshot TTK - ");
   protected JLabel totalModCostLabel = new JLabel("Total mod cost:");
   
   /** JTextFields **/
